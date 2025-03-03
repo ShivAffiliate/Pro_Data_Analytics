@@ -1,0 +1,314 @@
+/* General Styles */
+body {
+    font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #d9e2ec, #b8c7d9);
+    min-height: 100vh;
+    color: #333;
+    transition: background 0.5s ease, color 0.3s ease;
+    letter-spacing: 0.5px;
+}
+
+body.dark-mode {
+    background: linear-gradient(135deg, #1a2c4a, #2e425e);
+    color: #e9ecef;
+}
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(135deg, #2b4066, #1a8b9d);
+    padding: 1rem 2rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.navbar-brand {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+/* Container */
+.container {
+    padding: 2rem;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    width: 200px;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    z-index: 1000;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dark-mode .sidebar {
+    background: #2e425e;
+}
+
+.sidebar-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.dark-mode .sidebar-title {
+    color: #e9ecef;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 150px;
+        left: 10px;
+    }
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+
+.card:focus-within {
+    border: 2px solid #1a8b9d;
+    box-shadow: 0 0 10px rgba(26, 139, 157, 0.5);
+}
+
+.dark-mode .card:focus-within {
+    border: 2px solid #146c7a;
+    box-shadow: 0 0 10px rgba(20, 108, 122, 0.5);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #2b4066, #1a8b9d);
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.5rem;
+}
+
+.card-body.bg-light {
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+}
+
+.dark-mode .card {
+    background: #2e425e;
+}
+
+.dark-mode .card-body.bg-light {
+    background: #3b4a6b;
+}
+
+/* Typography */
+h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.dark-mode h3 {
+    color: #e9ecef;
+}
+
+.form-label {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.dark-mode .form-label {
+    color: #adb5bd;
+}
+
+/* Form Inputs */
+.data-input {
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+    color: #333;
+}
+
+.data-input:focus {
+    border-color: #2b4066;
+    box-shadow: 0 0 12px rgba(43, 64, 102, 0.4);
+    transform: scale(1.02);
+}
+
+.data-input.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 8px rgba(220, 53, 69, 0.3);
+}
+
+.dark-mode .data-input {
+    background: #3b4a6b;
+    border-color: #6c757d;
+    color: #e9ecef;
+}
+
+.dark-mode .data-input:focus {
+    border-color: #1a8b9d;
+    box-shadow: 0 0 12px rgba(26, 139, 157, 0.4);
+}
+
+.dark-mode .data-input::placeholder {
+    color: #adb5bd;
+}
+
+.input-group-text {
+    border-radius: 10px 0 0 10px;
+    background: #f8f9fa;
+    color: #495057;
+}
+
+.dark-mode .input-group-text {
+    background: #3b4a6b;
+    color: #e9ecef;
+    border-color: #6c757d;
+}
+
+/* Buttons */
+.btn-primary {
+    background: linear-gradient(135deg, #2b4066, #1a8b9d);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #3f5a8a, #2ca1b3);
+    transform: scale(1.05);
+}
+
+.btn-primary:disabled {
+    background: linear-gradient(135deg, #aaa, #ccc);
+    cursor: not-allowed;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #0a6640, #1a9d6a);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #096b44, #23b17a);
+    transform: scale(1.05);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #0d5b6e, #1a8b9d);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #0f6b80, #23a1b3);
+    transform: scale(1.05);
+}
+
+.btn-outline-primary {
+    border-color: #2b4066;
+    color: #2b4066;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+    background: #2b4066;
+    color: #fff;
+}
+
+.dark-mode .btn-outline-primary {
+    border-color: #1a8b9d;
+    color: #1a8b9d;
+}
+
+.dark-mode .btn-outline-primary:hover {
+    background: #1a8b9d;
+    color: #fff;
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    max-width: 100%;
+    height: 450px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    transition: background 0.5s ease, transform 0.3s ease, border 0.3s ease;
+    overflow-x: auto;
+}
+
+.dark-mode .chart-container {
+    background: rgba(59, 74, 107, 0.85);
+    border: 1px solid #6c757d;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+}
+
+.chart-container:hover {
+    transform: scale(1.02);
+}
+
+/* Text Adjustments for Dark Mode */
+.dark-mode .text-muted {
+    color: #adb5bd !important;
+}
+
+.dark-mode #resultText {
+    color: #e9ecef;
+}
+
+.dark-mode, .dark-mode .card, .dark-mode .card-body {
+    color: #e9ecef;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate__animated.animate__fadeIn {
+    animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeInLeft {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.animate__animated.animate__fadeInLeft {
+    animation: fadeInLeft 0.8s ease-out;
+}
+
+/* Dark Mode Adjustments */
+.dark-mode .navbar {
+    background: linear-gradient(135deg, #1a2c4a, #146c7a);
+}
+
+.dark-mode .card-header {
+    background: linear-gradient(135deg, #1a2c4a, #146c7a);
+}
