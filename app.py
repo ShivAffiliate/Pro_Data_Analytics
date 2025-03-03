@@ -1,71 +1,62 @@
+import os
+import json
+import logging
+import redis
+import pandas as pd
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from celery import Celery
-import os
-import pandas as pd
-import json
-from datetime import datetime
-import logging
 
+# Flask App Configuration
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 
+# ✅ Load Redis Cloud URL from environment variable for security
+REDIS_URL = os.getenv("REDIS_URL", "redis://:your-redis-password@redis-11377.c72.eu-west-1-2.ec2.redns.redis-cloud.com:11377/0")
+
+# ✅ Initialize Redis Connection
+redis_client = redis.StrictRedis.from_url(REDIS_URL)
+
+# ✅ Configure Celery with Redis Cloud
+app.config['CELERY_BROKER_URL'] = REDIS_URL
+app.config['CELERY_RESULT_BACKEND'] = REDIS_URL
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'], backend=app.config['CELERY_RESULT_BACKEND'])
 celery.conf.update(app.config)
 
-# Ensure uploads directory exists
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+# ✅ Ensure uploads directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Set up logging
+# ✅ Setup logging for debugging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ========================= Celery Task ========================= #
 @celery.task(bind=True)
 def analyze_data(self, column_select, reference_column_select, analysis_type, drill_down=None):
     try:
-        # Load the CSV file
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'sales_data.csv')
         if not os.path.exists(file_path):
             return {'state': 'FAILURE', 'status': 'CSV file not found'}
 
-        # Load CSV
         df = pd.read_csv(file_path, encoding='utf-8')
 
         # Ensure column_select is numeric
         df[column_select] = pd.to_numeric(df[column_select], errors='coerce')
-        if df[column_select].isna().any():
-            logger.warning(f"Non-numeric values in {column_select}. Dropping rows with NaN.")
-            df = df.dropna(subset=[column_select])
+        df.dropna(subset=[column_select], inplace=True)
 
-        if reference_column_select:
-            # Verify the reference column exists
-            if reference_column_select not in df.columns:
-                return {'state': 'FAILURE', 'status': f"Selected column '{reference_column_select}' not found in data"}
-
-            # Check if the column is a date column
+        if reference_column_select and reference_column_select in df.columns:
             is_date_column = False
             first_value = df[reference_column_select].dropna().iloc[0] if not df[reference_column_select].dropna().empty else None
-            if first_value is not None:
+            if first_value:
                 try:
                     pd.to_datetime(first_value)
                     is_date_column = True
                 except (ValueError, TypeError):
                     pass
-            logger.info(f"Reference column '{reference_column_select}' detected as {'date' if is_date_column else 'non-date'}")
 
             if is_date_column:
-                # Parse as datetime
                 df[reference_column_select] = pd.to_datetime(df[reference_column_select], errors='coerce')
-                if df[reference_column_select].isna().any():
-                    invalid_dates = df[reference_column_select].isna().sum()
-                    logger.warning(f"Found {invalid_dates} invalid dates in {reference_column_select}. Dropping rows with NaT.")
-                    df = df.dropna(subset=[reference_column_select])
-                if df.empty:
-                    return {'state': 'SUCCESS', 'status': 'No valid data after date parsing', 
-                            'result': {'value': 0}, 
-                            'chart_data': {'labels': [], 'values': [], 'label': 'No Data'}}
+                df.dropna(subset=[reference_column_select], inplace=True)
 
                 if drill_down:
                     month = drill_down.get('month', '').lower()
@@ -76,41 +67,33 @@ def analyze_data(self, column_select, reference_column_select, analysis_type, dr
                                (df[reference_column_select].dt.year == int(year))
                         day_data = df[mask]
                         if day_data.empty:
-                            return {'state': 'SUCCESS', 'status': f'No day-wise data for {month.capitalize()} {year}', 
+                            return {'state': 'SUCCESS', 'status': f'No data for {month.capitalize()} {year}', 
                                     'result': {'value': 0}, 
                                     'chart_data': {'labels': [], 'values': [], 'label': 'No Data'}}
-                        day_data_grouped = day_data.groupby(day_data[reference_column_select].dt.date)[column_select].sum().reset_index()
-                        day_data_grouped[reference_column_select] = pd.to_datetime(day_data_grouped[reference_column_select])
-                        logger.info(f"Day-wise aggregation for {month} {year}: {day_data_grouped}")
-                        day_labels = day_data_grouped[reference_column_select].dt.strftime('%Y-%m-%d').tolist()
-                        day_values = day_data_grouped[column_select].tolist()
-                        chart_data = {'labels': day_labels, 'values': day_values, 'label': 'Day-wise Data'}
-                        result = {'value': day_data[column_select].mean()}
-                        return {'state': 'SUCCESS', 'result': result, 'chart_data': chart_data}
-                else:
-                    # Monthly aggregation
-                    monthly_data = df.groupby(df[reference_column_select].dt.to_period('M'))[column_select].mean().reset_index()
-                    monthly_data[reference_column_select] = monthly_data[reference_column_select].dt.strftime('%b %Y')
-                    labels = monthly_data[reference_column_select].tolist()
-                    values = monthly_data[column_select].tolist()
+                        grouped = day_data.groupby(day_data[reference_column_select].dt.date)[column_select].sum().reset_index()
+                        labels = grouped[reference_column_select].dt.strftime('%Y-%m-%d').tolist()
+                        values = grouped[column_select].tolist()
+                        return {'state': 'SUCCESS', 'result': {'value': day_data[column_select].mean()}, 'chart_data': {'labels': labels, 'values': values, 'label': 'Day-wise Data'}}
+                
+                monthly_data = df.groupby(df[reference_column_select].dt.to_period('M'))[column_select].mean().reset_index()
+                monthly_data[reference_column_select] = monthly_data[reference_column_select].dt.strftime('%b %Y')
+                labels = monthly_data[reference_column_select].tolist()
+                values = monthly_data[column_select].tolist()
             else:
-                # Non-date column: group by the column
                 grouped_data = df.groupby(reference_column_select)[column_select].mean().reset_index()
                 labels = grouped_data[reference_column_select].astype(str).tolist()
                 values = grouped_data[column_select].tolist()
         else:
-            # No reference column: use index
             labels = df.index.astype(str).tolist()
             values = df[column_select].tolist()
 
-        chart_data = {'labels': labels, 'values': values, 'label': 'Data'}
-        result = {'value': df[column_select].mean()}
-        return {'state': 'SUCCESS', 'result': result, 'chart_data': chart_data}
+        return {'state': 'SUCCESS', 'result': {'value': df[column_select].mean()}, 'chart_data': {'labels': labels, 'values': values, 'label': 'Data'}}
 
     except Exception as e:
         logger.error(f"Error in analyze_data: {str(e)}")
         return {'state': 'FAILURE', 'status': str(e)}
 
+# ========================= Flask Routes ========================= #
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -120,6 +103,7 @@ def get_columns():
     try:
         if 'data_file' not in request.files:
             return jsonify({'error': 'No file part'})
+        
         file = request.files['data_file']
         if file.filename == '':
             return jsonify({'error': 'No selected file'})
@@ -129,32 +113,18 @@ def get_columns():
         elif file.filename.endswith('.xlsx'):
             df = pd.read_excel(file)
         elif file.filename.endswith('.json'):
-            file_content = file.read().decode('utf-8')
-            json_data = json.loads(file_content)
-            if isinstance(json_data, list):
-                df = pd.DataFrame(json_data)
-            elif isinstance(json_data, dict) and 'sales' in json_data:
-                df = pd.DataFrame(json_data['sales'])
-            else:
-                return jsonify({'error': 'Invalid JSON format. Expected an array or object with "sales" key.'})
+            json_data = json.loads(file.read().decode('utf-8'))
+            df = pd.DataFrame(json_data.get('sales', json_data)) if isinstance(json_data, (dict, list)) else None
         else:
             return jsonify({'error': 'Only CSV, XLSX, and JSON files are supported.'})
 
-        # Standardize date column name
-        if 'date' in df.columns:
-            df.rename(columns={'date': 'Date'}, inplace=True)
+        if df is None:
+            return jsonify({'error': 'Invalid JSON format'})
 
-        # Save the processed DataFrame as CSV
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'sales_data.csv')
-        df.to_csv(file_path, index=False)
+        df.rename(columns={'date': 'Date'}, inplace=True)
+        df.to_csv(os.path.join(app.config['UPLOAD_FOLDER'], 'sales_data.csv'), index=False)
+        return jsonify({'columns': df.columns.tolist()})
 
-        # Return the standardized column names
-        columns = df.columns.tolist()
-        return jsonify({'columns': columns})
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON: {str(e)}")
-        return jsonify({'error': f'Invalid JSON: {str(e)}'})
     except Exception as e:
         logger.error(f"Error in get_columns: {str(e)}")
         return jsonify({'error': str(e)})
@@ -177,12 +147,7 @@ def analyze():
 @app.route('/task_status/<task_id>')
 def task_status(task_id):
     task_result = analyze_data.AsyncResult(task_id)
-    if task_result.state == 'PENDING':
-        return jsonify({'state': task_result.state, 'status': 'Processing...'})
-    elif task_result.state == 'FAILURE':
-        return jsonify({'state': task_result.state, 'status': str(task_result.result)})
-    else:
-        return jsonify({'state': task_result.state, 'result': task_result.result})
+    return jsonify({'state': task_result.state, 'status': str(task_result.result) if task_result.state == 'FAILURE' else '', 'result': task_result.result})
 
 if __name__ == '__main__':
     app.run(debug=True)
